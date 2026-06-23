@@ -446,7 +446,11 @@ export function animateCharacter(ctx, config, rows, shouldAnimate, pattern, edit
             currentHaps.forEach(event => {
                 if (event.hasOnset()) {
                     const phase = event.whole.begin % 1;
-                    const position = Math.floor(phase * pattern.tactus);
+                    const eventRowIndex = rowMappings[event.value.s];
+                    const eventSteps = eventRowIndex !== undefined
+                        ? rows[eventRowIndex].assets.length - 1
+                        : pattern.tactus;
+                    const position = Math.floor(phase * eventSteps);
                     console.log(`Position ${position}: ${event.value.s} at phase ${phase.toFixed(3)}`);
 
                     pendingEvents.push({
@@ -483,7 +487,11 @@ export function animateCharacter(ctx, config, rows, shouldAnimate, pattern, edit
                 const rowIndex = rowMappings[instrument];
                 if (rowIndex === undefined) return;
 
-                const totalSteps = pattern.tactus;
+                // Use the level's declared tile-slot count for this row, not
+                // pattern.tactus — tactus reflects Strudel's top-level token
+                // count, which collapses to 1 for grouped/sped-up sub-patterns
+                // like "[~ ho]*4" even though they produce multiple onsets.
+                const totalSteps = rows[rowIndex].assets.length - 1;
                 const currentIndex = Math.floor(event.phase * totalSteps);
 
                 // Skip out of bound indices
@@ -524,7 +532,7 @@ export function animateCharacter(ctx, config, rows, shouldAnimate, pattern, edit
                 const timeSinceLanding = (now - landingTimes[instrument]) / 1000; // in seconds
 
 // Smooth depth effect: grows bigger and back over the jump duration
-                const beatDuration = 1 / pattern.tactus; // Duration of one beat in seconds
+                const beatDuration = 1 / totalSteps; // Duration of one beat in seconds
                 let scaleMultiplier = 1.0;
 
                 if (timeSinceLanding < beatDuration * 1.0) {
